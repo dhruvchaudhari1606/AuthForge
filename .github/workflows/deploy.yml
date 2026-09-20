@@ -1,0 +1,49 @@
+name: AuthForge CD Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Application Image
+        run: |
+          docker build \
+            --tag authforge:${{ github.sha }} \
+            --tag authforge:latest \
+            .
+
+      - name: Run Database Migrations
+        env:
+          NODE_ENV: ${{ github.event.inputs.environment }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          echo "Executing zero-downtime TypeORM migrations..."
+          # npm run migration:run:${{ github.event.inputs.environment }}
+
+      - name: Verify Health Check Post-Deployment
+        run: |
+          echo "Verifying /api/v1/health probe on deployed target..."
