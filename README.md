@@ -95,9 +95,10 @@ flowchart TD
 
 ### 2. Token Theft & Reuse Detection
 * If an attacker intercepts a rotated refresh token and attempts to replay it, AuthForge detects that the token was already consumed. It immediately:
-  1. Revokes the compromised session across all devices.
-  2. Records a high-severity `TOKEN_REUSE` audit record with IP, user-agent, and timestamp.
-  3. Clears the client's cookies and forces re-authentication.
+  1. Revokes **all active user sessions** across all devices.
+  2. Increments `token_version` to immediately invalidate all existing access tokens.
+  3. Records a high-severity `AUTH_REFRESH_REUSE_DETECTED` audit record with IP, user-agent, and timestamp.
+  4. Clears the client's cookies and forces re-authentication.
 
 ### 3. Dynamic RBAC Without Re-Deploying
 * Rather than hardcoded enum checks like `@Roles('admin')`, AuthForge uses an extensible permission system:

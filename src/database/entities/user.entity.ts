@@ -1,8 +1,6 @@
 import {
   Column,
   Entity,
-  ManyToOne,
-  JoinColumn,
   OneToMany,
   ManyToMany,
   JoinTable,
@@ -53,13 +51,6 @@ export class User extends BaseEntity {
   @Column({ default: 'en' })
   language!: string;
 
-  @Column({ type: 'uuid', nullable: true })
-  role_id?: string | null;
-
-  @ManyToOne(() => Role, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'role_id' })
-  role?: Role | null;
-
   @ManyToMany(() => Role, (role) => role.users, { cascade: true })
   @JoinTable({
     name: 'user_roles',
@@ -67,6 +58,10 @@ export class User extends BaseEntity {
     inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
   roles?: Role[];
+
+  get role(): Role | null {
+    return this.roles && this.roles.length > 0 ? this.roles[0] : null;
+  }
 
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   @Exclude({ toPlainOnly: true })

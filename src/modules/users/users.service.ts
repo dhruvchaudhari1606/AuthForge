@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -33,14 +37,14 @@ export class UsersService {
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
-      relations: ['role'],
+      relations: ['roles', 'roles.permissions'],
     });
   }
 
   async findExistUserById(id: string): Promise<User> {
     const user = await this.findById(id);
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
     return user;
   }
@@ -48,7 +52,7 @@ export class UsersService {
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: { email },
-      relations: ['role'],
+      relations: ['roles', 'roles.permissions'],
     });
   }
 
@@ -56,6 +60,12 @@ export class UsersService {
     const role = await this.roleRepository.findOne({
       where: { name: 'user' },
     });
+
+    if (!role) {
+      throw new InternalServerErrorException(
+        'Default user role is not configured. Please run database seeders.',
+      );
+    }
 
     const saltRounds = this.configService.get<number>(
       'security.bcryptSaltRounds',
@@ -70,8 +80,7 @@ export class UsersService {
         data.lastName || data.name.split(' ').slice(1).join(' ') || undefined,
       email: data.email.trim().toLowerCase(),
       password: hashedPassword,
-      role: role!,
-      roles: role ? [role] : [],
+      roles: [role],
       status: UserStatus.ACTIVE,
       language: data.language,
     });
@@ -94,7 +103,7 @@ export class UsersService {
       skip: (query.page! - 1) * query.limit!,
       take: query.limit,
       order: { [query.sortBy!]: query.order },
-      relations: [Role.name.toLocaleLowerCase()],
+      relations: ['roles'],
     });
     return buildPagination(users, count, query.page!, query.limit!);
   }

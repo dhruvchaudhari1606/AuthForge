@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CookieOptions, Request, Response } from 'express';
+import ms, { StringValue } from 'ms';
 
 export interface AuthTokens {
   accessToken: string;
@@ -22,6 +23,26 @@ export class CookieService {
     return this.configService.get<string>(
       'cookies.refreshTokenName',
       'refresh_token',
+    );
+  }
+
+  private getAccessMaxAgeMs(): number {
+    const accessExpiresIn =
+      this.configService.get<string>('jwt.accessExpiresIn') || '15m';
+    return (
+      (typeof ms === 'function'
+        ? ms(accessExpiresIn as StringValue)
+        : 15 * 60 * 1000) ?? 15 * 60 * 1000
+    );
+  }
+
+  private getRefreshMaxAgeMs(): number {
+    const refreshExpiresIn =
+      this.configService.get<string>('jwt.refreshExpiresIn') || '30d';
+    return (
+      (typeof ms === 'function'
+        ? ms(refreshExpiresIn as StringValue)
+        : 30 * 24 * 60 * 60 * 1000) ?? 30 * 24 * 60 * 60 * 1000
     );
   }
 
@@ -62,16 +83,16 @@ export class CookieService {
   setAuthCookies(res: Response, tokens: AuthTokens): void {
     const baseOptions = this.getBaseCookieOptions();
 
-    // Access token cookie (15 minutes by default)
+    // Access token cookie (synchronized with JWT access expiration)
     res.cookie(this.accessTokenName, tokens.accessToken, {
       ...baseOptions,
-      maxAge: 15 * 60 * 1000,
+      maxAge: this.getAccessMaxAgeMs(),
     });
 
-    // Refresh token cookie (30 days by default)
+    // Refresh token cookie (synchronized with JWT refresh expiration)
     res.cookie(this.refreshTokenName, tokens.refreshToken, {
       ...baseOptions,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: this.getRefreshMaxAgeMs(),
     });
   }
 

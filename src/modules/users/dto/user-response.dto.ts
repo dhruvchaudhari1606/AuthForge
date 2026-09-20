@@ -68,6 +68,14 @@ export class UserResponseDto {
   @Type(() => RoleResponseDto)
   role?: RoleResponseDto | null;
 
+  @ApiPropertyOptional({
+    description: 'Assigned roles list',
+    type: () => [RoleResponseDto],
+  })
+  @Expose()
+  @Type(() => RoleResponseDto)
+  roles?: RoleResponseDto[];
+
   @ApiProperty({ description: 'Account creation timestamp' })
   @Expose()
   createdAt!: Date;

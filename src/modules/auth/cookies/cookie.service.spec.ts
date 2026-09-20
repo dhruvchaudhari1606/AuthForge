@@ -59,6 +59,47 @@ describe('CookieService', () => {
     );
   });
 
+  it('respects configured jwt expiration times for cookie maxAge', () => {
+    const customConfigService = {
+      get: jest.fn((key: string, defaultValue?: unknown) => {
+        const store: Record<string, unknown> = {
+          'app.env': 'development',
+          'cookies.secure': false,
+          'cookies.sameSite': 'lax',
+          'cookies.path': '/',
+          'cookies.accessTokenName': 'access_token',
+          'cookies.refreshTokenName': 'refresh_token',
+          'jwt.accessExpiresIn': '30m',
+          'jwt.refreshExpiresIn': '7d',
+        };
+        return store[key] !== undefined ? store[key] : defaultValue;
+      }),
+    } as unknown as ConfigService;
+
+    const customCookieService = new CookieService(customConfigService);
+    const res = { cookie: jest.fn() } as unknown as Response;
+
+    customCookieService.setAuthCookies(res, {
+      accessToken: 'acc',
+      refreshToken: 'ref',
+    });
+
+    expect(res.cookie).toHaveBeenCalledWith(
+      'access_token',
+      'acc',
+      expect.objectContaining({
+        maxAge: 30 * 60 * 1000,
+      }),
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refresh_token',
+      'ref',
+      expect.objectContaining({
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      }),
+    );
+  });
+
   it('clears access and refresh cookies', () => {
     const res = {
       clearCookie: jest.fn(),

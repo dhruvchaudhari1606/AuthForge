@@ -116,7 +116,7 @@ describe('Auth routes (e2e)', () => {
     const payload = {
       name: 'John Doe',
       email: 'john@example.com',
-      password: 'password123',
+      password: 'Password123!',
       language: 'en',
     };
 
@@ -155,7 +155,7 @@ describe('Auth routes (e2e)', () => {
       .send({
         name: 'Secret User',
         email: 'secret@example.com',
-        password: 'password123',
+        password: 'Password123!',
         language: 'en',
       })
       .expect(201);
@@ -188,7 +188,7 @@ describe('Auth routes (e2e)', () => {
       path: '/api/v1/auth/register',
       message: expect.arrayContaining([
         'email must be an email',
-        'password must be longer than or equal to 6 characters',
+        'password must be longer than or equal to 8 characters',
         'language must be one of the following values: en, fr, hin',
         'language should not be empty',
       ]),
@@ -205,7 +205,7 @@ describe('Auth routes (e2e)', () => {
       .send({
         name: 'Jane Doe',
         email: 'existing@example.com',
-        password: 'password123',
+        password: 'Password123!',
         language: 'en',
       })
       .expect(409);
@@ -227,7 +227,7 @@ describe('Auth routes (e2e)', () => {
 
     const payload = {
       email: 'john@example.com',
-      password: 'password123',
+      password: 'Password123!',
     };
 
     const response = await request(app.getHttpServer())

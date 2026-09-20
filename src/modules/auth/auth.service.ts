@@ -228,6 +228,10 @@ export class AuthService {
           rotationError instanceof UnauthorizedException &&
           rotationError.message === 'Refresh token reuse detected'
         ) {
+          // Account-wide emergency kill switch: invalidate all active sessions and tokens
+          await this.sessionService.revokeAllUserSessions(userId);
+          await this.usersService.incrementTokenVersion(userId);
+
           await this.auditService.log({
             userId,
             event: AuditEvent.AUTH_REFRESH_REUSE_DETECTED,

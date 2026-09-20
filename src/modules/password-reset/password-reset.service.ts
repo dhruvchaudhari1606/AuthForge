@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, MoreThan, EntityManager } from 'typeorm';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { Request } from 'express';
@@ -42,6 +42,29 @@ export class PasswordResetService {
     private readonly auditService: AuditService,
   ) {}
 
+  private async compareResetTokenHash(
+    rawToken: string,
+    storedHash: string,
+  ): Promise<boolean> {
+    if (storedHash.startsWith('$2')) {
+      return bcrypt.compare(rawToken, storedHash);
+    }
+
+    const computedHash = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+
+    if (storedHash.length !== computedHash.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(
+      Buffer.from(storedHash),
+      Buffer.from(computedHash),
+    );
+  }
+
   // Create Reset Token
   async createResetToken(
     user: User,
@@ -63,8 +86,11 @@ export class PasswordResetService {
     // 2. Generate secure random token
     const plainToken = crypto.randomBytes(32).toString('hex');
 
-    // 3. Hash token with bcrypt or sha256
-    const tokenHash = await bcrypt.hash(plainToken, 10);
+    // 3. Hash token with SHA-256 (constant-time check, immune to event loop blocking)
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(plainToken)
+      .digest('hex');
 
     // 4. Expiry
     const expiresAt = new Date();
@@ -87,8 +113,15 @@ export class PasswordResetService {
   }
 
   // Validate Reset Token
-  async validateResetToken(user: User, token: string): Promise<PasswordReset> {
-    const reset = await this.passwordResetRepository.findOne({
+  async validateResetToken(
+    user: User,
+    token: string,
+    transactionalEntityManager?: EntityManager,
+  ): Promise<PasswordReset> {
+    const manager =
+      transactionalEntityManager || this.passwordResetRepository.manager;
+
+    const reset = await manager.findOne(PasswordReset, {
       where: {
         user_id: user.id,
         used: false,
@@ -97,13 +130,16 @@ export class PasswordResetService {
       order: {
         createdAt: 'DESC',
       },
+      lock: transactionalEntityManager
+        ? { mode: 'pessimistic_write' }
+        : undefined,
     });
 
     if (!reset || !reset.token_hash) {
       throw new BadRequestException('Invalid or expired token');
     }
 
-    const isMatch = await bcrypt.compare(token, reset.token_hash);
+    const isMatch = await this.compareResetTokenHash(token, reset.token_hash);
 
     if (!isMatch) {
       throw new BadRequestException('Invalid or expired token');
@@ -113,11 +149,18 @@ export class PasswordResetService {
   }
 
   // Consume Token
-  async consumeResetToken(reset: PasswordReset): Promise<void> {
+  async consumeResetToken(
+    reset: PasswordReset,
+    transactionalEntityManager?: EntityManager,
+  ): Promise<void> {
     reset.used = true;
     reset.token_hash = null;
 
-    await this.passwordResetRepository.save(reset);
+    if (transactionalEntityManager) {
+      await transactionalEntityManager.save(PasswordReset, reset);
+    } else {
+      await this.passwordResetRepository.save(reset);
+    }
   }
 
   async handleForgotPassword(
@@ -193,18 +236,6 @@ export class PasswordResetService {
   ): Promise<void> {
     const normalizedEmail = dto.email.trim().toLowerCase();
 
-    const user = await this.userRepository.findOne({
-      where: {
-        email: normalizedEmail,
-      },
-    });
-
-    if (!user) {
-      throw new BadRequestException('Invalid or expired token');
-    }
-
-    const reset = await this.validateResetToken(user, dto.token);
-
     // Validate password policy
     const strengthResult = this.passwordService.validateStrength(dto.password);
     if (!strengthResult.isValid) {
@@ -216,31 +247,56 @@ export class PasswordResetService {
 
     const hashedPassword = await this.passwordService.hash(dto.password);
 
-    user.password = hashedPassword;
-    user.token_version += 1;
+    let targetUser!: User;
 
-    await this.userRepository.save(user);
-    await this.consumeResetToken(reset);
+    await this.passwordResetRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        const user = await transactionalEntityManager.findOne(User, {
+          where: {
+            email: normalizedEmail,
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!user) {
+          throw new BadRequestException('Invalid or expired token');
+        }
+
+        const reset = await this.validateResetToken(
+          user,
+          dto.token,
+          transactionalEntityManager,
+        );
+
+        user.password = hashedPassword;
+        user.token_version += 1;
+
+        await transactionalEntityManager.save(User, user);
+        await this.consumeResetToken(reset, transactionalEntityManager);
+
+        targetUser = user;
+      },
+    );
 
     // Invalidate all active sessions across devices
-    await this.sessionService.revokeAllUserSessions(user.id);
+    await this.sessionService.revokeAllUserSessions(targetUser.id);
 
     const { deviceInfo, ipAddress } = this.extractRequestMetadata(req);
 
     await this.auditService.log({
-      userId: user.id,
+      userId: targetUser.id,
       event: AuditEvent.PASSWORD_RESET_COMPLETED,
       ipAddress,
       userAgent: deviceInfo.user_agent,
     });
 
     await this.mailService.send({
-      to: user.email,
+      to: targetUser.email,
       subjectKey: 'mail.password_updated_subject',
       template: MailTemplate.PASSWORD_UPDATED,
-      language: user.language,
+      language: targetUser.language,
       context: {
-        name: user.name,
+        name: targetUser.name,
         browser: deviceInfo.browser,
         os: deviceInfo.os,
         deviceType: deviceInfo.device_type,

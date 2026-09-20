@@ -10,10 +10,10 @@ export class RolesGuard implements CanActivate {
 
   private static getRequestUser(
     context: ExecutionContext,
-  ): { role?: string } | undefined {
-    const request = context
-      .switchToHttp()
-      .getRequest<{ user?: { role?: string } }>();
+  ): { role?: string; roles?: Array<string | { name: string }> } | undefined {
+    const request = context.switchToHttp().getRequest<{
+      user?: { role?: string; roles?: Array<string | { name: string }> };
+    }>();
 
     return request.user;
   }
@@ -30,10 +30,28 @@ export class RolesGuard implements CanActivate {
 
     const user = RolesGuard.getRequestUser(context);
 
-    if (!user?.role) {
+    if (!user) {
       return false;
     }
 
-    return requiredRoles.includes(user.role);
+    const userRoles: string[] = [];
+    if (user.role) {
+      userRoles.push(user.role);
+    }
+    if (Array.isArray(user.roles)) {
+      for (const r of user.roles) {
+        if (typeof r === 'string') {
+          userRoles.push(r);
+        } else if (r && typeof r.name === 'string') {
+          userRoles.push(r.name);
+        }
+      }
+    }
+
+    if (userRoles.length === 0) {
+      return false;
+    }
+
+    return requiredRoles.some((required) => userRoles.includes(required));
   }
 }

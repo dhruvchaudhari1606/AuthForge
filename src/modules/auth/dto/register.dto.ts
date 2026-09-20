@@ -6,8 +6,16 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
+  MaxLength,
   MinLength,
 } from 'class-validator';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_REGEX,
+  PASSWORD_RULE_MESSAGE,
+} from '../password/password-policy';
 
 export class RegisterDto {
   @ApiProperty({ example: 'John Doe' })
@@ -32,9 +40,17 @@ export class RegisterDto {
   )
   email!: string;
 
-  @ApiProperty({ example: 'StrongPassword123!' })
+  @ApiProperty({
+    example: 'StrongPassword123!',
+    description:
+      'Password meeting criteria (min 8 chars, max 128, upper, lower, number, special character)',
+  })
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(PASSWORD_MIN_LENGTH)
+  @MaxLength(PASSWORD_MAX_LENGTH)
+  @Matches(PASSWORD_REGEX, {
+    message: PASSWORD_RULE_MESSAGE,
+  })
   password!: string;
 
   @ApiProperty({ example: 'en' })

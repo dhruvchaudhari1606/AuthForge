@@ -8,7 +8,7 @@ import { SessionService } from './sessions/session.service';
 import { TokenService } from './tokens/token.service';
 import { PasswordService } from './password/password.service';
 import { AuthService } from './auth.service';
-import { UserStatus } from '@common/constants/constants';
+import { AuditEvent, UserStatus } from '@common/constants/constants';
 
 import { AuditService } from '@modules/audit/audit.service';
 
@@ -293,6 +293,40 @@ describe('AuthService', () => {
         'invalid token',
       );
     });
+
+    it('triggers account-wide session revocation and bumps token_version on reuse detection', async () => {
+      (tokenService.verifyRefreshToken as jest.Mock).mockResolvedValue({
+        sub: 'user-1',
+        sessionId: 'session-1',
+        tokenVersion: 3,
+      });
+      (usersService.findById as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'john@example.com',
+        roles: [{ name: 'user' }],
+        status: UserStatus.ACTIVE,
+        token_version: 3,
+      });
+      (sessionService.rotateSessionToken as jest.Mock).mockRejectedValue(
+        new UnauthorizedException('Refresh token reuse detected'),
+      );
+
+      await expect(service.refresh('reused-token')).rejects.toThrow(
+        new UnauthorizedException('Refresh token reuse detected'),
+      );
+
+      expect(sessionService.revokeAllUserSessions).toHaveBeenCalledWith(
+        'user-1',
+      );
+      expect(usersService.incrementTokenVersion).toHaveBeenCalledWith('user-1');
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          event: AuditEvent.AUTH_REFRESH_REUSE_DETECTED,
+          metadata: { sessionId: 'session-1' },
+        }),
+      );
+    });
   });
 
   describe('logout', () => {
@@ -329,6 +363,7 @@ describe('AuthService', () => {
       expect(sessionService.revokeAllUserSessions).toHaveBeenCalledWith(
         'user-1',
       );
+      expect(usersService.incrementTokenVersion).toHaveBeenCalledWith('user-1');
     });
   });
 });

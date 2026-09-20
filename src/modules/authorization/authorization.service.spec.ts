@@ -50,8 +50,7 @@ describe('AuthorizationService', () => {
     it('returns all system permissions when user is an admin', async () => {
       const adminUser = {
         id: 'user-1',
-        role: { name: ROLES.ADMIN },
-        roles: [],
+        roles: [{ name: ROLES.ADMIN }],
       } as unknown as User;
 
       const allPermissions = [
@@ -74,11 +73,12 @@ describe('AuthorizationService', () => {
     it('returns role-specific permissions for standard user', async () => {
       const standardUser = {
         id: 'user-2',
-        role: {
-          name: ROLES.USER,
-          permissions: [{ id: 'p1', name: 'users.read' }],
-        },
-        roles: [],
+        roles: [
+          {
+            name: ROLES.USER,
+            permissions: [{ id: 'p1', name: 'users.read' }],
+          },
+        ],
       } as unknown as User;
 
       (userRepository.findOne as jest.Mock).mockResolvedValue(standardUser);

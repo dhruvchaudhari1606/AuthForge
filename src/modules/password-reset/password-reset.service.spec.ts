@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { PasswordResetService } from './password-reset.service';
 import { PasswordReset } from '@database/entities/password-reset.entity';
@@ -20,11 +21,23 @@ jest.mock('bcrypt', () => ({
 describe('PasswordResetService', () => {
   let service: PasswordResetService;
 
+  const mockTransactionalEntityManager = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+  };
+
   const passwordResetRepository = {
     update: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
+    manager: {
+      transaction: jest.fn(async (cb: (em: unknown) => Promise<unknown>) =>
+        cb(mockTransactionalEntityManager),
+      ),
+      findOne: jest.fn(),
+      save: jest.fn(),
+    },
   } as unknown as Repository<PasswordReset>;
 
   const userRepository = {
@@ -67,6 +80,14 @@ describe('PasswordResetService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      passwordResetRepository.manager
+        .transaction as unknown as jest.MockedFunction<
+        (cb: (em: unknown) => Promise<unknown>) => Promise<unknown>
+      >
+    ).mockImplementation(async (cb: (em: unknown) => Promise<unknown>) =>
+      cb(mockTransactionalEntityManager),
+    );
     service = new PasswordResetService(
       passwordResetRepository,
       userRepository,
@@ -142,13 +163,19 @@ describe('PasswordResetService', () => {
       const resetRecord = {
         id: 'reset-1',
         user_id: 'user-1',
-        token_hash: 'token-hash',
+        token_hash: '$2b$10$legacyhashedtokenvalueforbackwardcompat',
         used: false,
       } as PasswordReset;
 
-      (userRepository.findOne as jest.Mock).mockResolvedValue(user);
-      (passwordResetRepository.findOne as jest.Mock).mockResolvedValue(
-        resetRecord,
+      mockTransactionalEntityManager.findOne.mockImplementation(
+        (entity: unknown) => {
+          if (entity === User) return Promise.resolve(user);
+          if (entity === PasswordReset) return Promise.resolve(resetRecord);
+          return Promise.resolve(null);
+        },
+      );
+      mockTransactionalEntityManager.save.mockImplementation(
+        (_entity: unknown, item: unknown) => Promise.resolve(item),
       );
       bcryptCompareMock.mockResolvedValue(true as never);
       (passwordService.validateStrength as jest.Mock).mockReturnValue({
@@ -156,10 +183,6 @@ describe('PasswordResetService', () => {
       });
       (passwordService.hash as jest.Mock).mockResolvedValue(
         'new-hashed-password',
-      );
-      (userRepository.save as jest.Mock).mockResolvedValue(user);
-      (passwordResetRepository.save as jest.Mock).mockResolvedValue(
-        resetRecord,
       );
       (sessionService.revokeAllUserSessions as jest.Mock).mockResolvedValue(
         undefined,
@@ -188,6 +211,63 @@ describe('PasswordResetService', () => {
         }),
       );
       expect(mailService.send).toHaveBeenCalled();
+    });
+
+    it('successfully resets password using sha256 hashed token with timing-safe comparison', async () => {
+      const user = {
+        id: 'user-1',
+        email: 'john@example.com',
+        password: 'old-hashed-password',
+        token_version: 1,
+      } as User;
+
+      const plainToken = 'secure-sha256-test-token-value';
+      const sha256Hash = crypto
+        .createHash('sha256')
+        .update(plainToken)
+        .digest('hex');
+
+      const resetRecord = {
+        id: 'reset-1',
+        user_id: 'user-1',
+        token_hash: sha256Hash,
+        used: false,
+      } as PasswordReset;
+
+      mockTransactionalEntityManager.findOne.mockImplementation(
+        (entity: unknown) => {
+          if (entity === User) return Promise.resolve(user);
+          if (entity === PasswordReset) return Promise.resolve(resetRecord);
+          return Promise.resolve(null);
+        },
+      );
+      mockTransactionalEntityManager.save.mockImplementation(
+        (_entity: unknown, item: unknown) => Promise.resolve(item),
+      );
+      (passwordService.validateStrength as jest.Mock).mockReturnValue({
+        isValid: true,
+      });
+      (passwordService.hash as jest.Mock).mockResolvedValue(
+        'new-hashed-password',
+      );
+      (sessionService.revokeAllUserSessions as jest.Mock).mockResolvedValue(
+        undefined,
+      );
+      (mailService.send as jest.Mock).mockResolvedValue(undefined);
+
+      await service.handleResetPassword(
+        {
+          email: 'john@example.com',
+          token: plainToken,
+          password: 'NewStrongPassword123!',
+        },
+        mockReq,
+      );
+
+      expect(user.password).toBe('new-hashed-password');
+      expect(user.token_version).toBe(2);
+      expect(resetRecord.used).toBe(true);
+      expect(resetRecord.token_hash).toBeNull();
     });
 
     it('throws BadRequestException if password policy check fails', async () => {

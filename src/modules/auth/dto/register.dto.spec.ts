@@ -7,7 +7,7 @@ describe('RegisterDto', () => {
     const dto = plainToInstance(RegisterDto, {
       name: 'John Doe',
       email: 'john@example.com',
-      password: 'password123',
+      password: 'StrongPassword123!',
       language: 'en',
     });
 
@@ -29,11 +29,27 @@ describe('RegisterDto', () => {
     });
   });
 
+  it('rejects passwords failing complexity regex', async () => {
+    const dto = plainToInstance(RegisterDto, {
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'simplepassword',
+      language: 'en',
+    });
+
+    const errors = await validate(dto);
+    const passwordError = errors.find((e) => e.property === 'password');
+
+    expect(passwordError?.constraints).toMatchObject({
+      matches: expect.any(String),
+    });
+  });
+
   it('rejects invalid language', async () => {
     const dto = plainToInstance(RegisterDto, {
       name: 'John Doe',
       email: 'john@example.com',
-      password: 'password123',
+      password: 'StrongPassword123!',
       language: 'de',
     });
 
@@ -48,7 +64,7 @@ describe('RegisterDto', () => {
     const dto = plainToInstance(RegisterDto, {
       name: 'John Doe',
       email: 'john@example.com',
-      password: 'password123',
+      password: 'StrongPassword123!',
     });
 
     const errors = await validate(dto);

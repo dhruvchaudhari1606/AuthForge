@@ -56,7 +56,7 @@ describe('UsersService', () => {
     await expect(service.findById('user-1')).resolves.toEqual(user);
     expect(userRepository.findOne).toHaveBeenCalledWith({
       where: { id: 'user-1' },
-      relations: ['role'],
+      relations: ['roles', 'roles.permissions'],
     });
   });
 
@@ -75,7 +75,7 @@ describe('UsersService', () => {
     );
     expect(userRepository.findOne).toHaveBeenCalledWith({
       where: { email: 'john@example.com' },
-      relations: ['role'],
+      relations: ['roles', 'roles.permissions'],
     });
   });
 
@@ -109,7 +109,6 @@ describe('UsersService', () => {
       last_name: 'Doe',
       email: 'john@example.com',
       password: 'hashed-password',
-      role,
       roles: [role],
       status: 'active',
       language: 'en',
@@ -123,6 +122,19 @@ describe('UsersService', () => {
       context: { name: 'John Doe' },
       language: 'en',
     });
+  });
+
+  it('throws InternalServerErrorException when default user role is missing', async () => {
+    (roleRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      service.createUser({
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'password123',
+        language: 'en',
+      }),
+    ).rejects.toThrow('Default user role is not configured');
   });
 
   it('returns paginated users list', async () => {
@@ -144,7 +156,7 @@ describe('UsersService', () => {
       skip: 5,
       take: 5,
       order: { createdAt: 'DESC' },
-      relations: ['role'],
+      relations: ['roles'],
     });
     expect(result).toEqual({
       items: [{ id: 'user-1' }, { id: 'user-2' }],
