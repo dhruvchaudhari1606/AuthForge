@@ -261,6 +261,9 @@ export class AuthorizationService {
     const currentRoles = user.roles ?? [];
     if (!currentRoles.some((r) => r.id === role.id)) {
       user.roles = [...currentRoles, role];
+      if (!user.role) {
+        user.role = role;
+      }
       await this.userRepository.save(user);
 
       await this.auditService.log({
@@ -278,7 +281,7 @@ export class AuthorizationService {
   ): Promise<void> {
     const user = await this.userRepository.findOne({
       where: { id: targetUserId },
-      relations: ['roles'],
+      relations: ['roles', 'role'],
     });
 
     if (!user) {
@@ -292,6 +295,9 @@ export class AuthorizationService {
 
     if (updatedRoles.length !== currentRoles.length) {
       user.roles = updatedRoles;
+      if (user.role && user.role.name === roleName.trim().toLowerCase()) {
+        user.role = updatedRoles.length > 0 ? updatedRoles[0] : null;
+      }
       await this.userRepository.save(user);
 
       await this.auditService.log({

@@ -1,5 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import ms, { StringValue } from 'ms';
 import { UsersService } from '@modules/users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -22,7 +28,18 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly passwordService: PasswordService,
     private readonly auditService: AuditService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private getRefreshExpirationDate(): Date {
+    const refreshExpiresIn =
+      this.configService.get<string>('jwt.refreshExpiresIn') || '30d';
+    const refreshTtlMs =
+      typeof ms === 'function'
+        ? (ms(refreshExpiresIn as StringValue) ?? 30 * 24 * 60 * 60 * 1000)
+        : 30 * 24 * 60 * 60 * 1000;
+    return new Date(Date.now() + refreshTtlMs);
+  }
 
   async register(registerDetails: RegisterDto) {
     try {
@@ -35,7 +52,7 @@ export class AuthService {
           `User already exists: ${registerDetails.email}`,
           AuthService.name,
         );
-        throw new UnauthorizedException('User already exists');
+        throw new ConflictException('User already exists');
       }
 
       const user = await this.usersService.createUser(registerDetails);
@@ -109,8 +126,7 @@ export class AuthService {
 
       const ipAddress = req.ips?.length ? req.ips[0] : req.ip;
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
+      const expiresAt = this.getRefreshExpirationDate();
 
       const sessionDetails = await this.sessionService.createSession({
         user_id: user.id,
@@ -197,8 +213,7 @@ export class AuthService {
 
       const newHash = await this.tokenService.hashRefreshToken(newRefreshToken);
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
+      const expiresAt = this.getRefreshExpirationDate();
 
       // Concurrency-protected pessimistic locking rotation
       try {

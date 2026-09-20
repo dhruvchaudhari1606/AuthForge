@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/TypeORM-0.3-FE0808?style=for-the-badge&logo=typeorm&logoColor=white" alt="TypeORM" />
   <img src="https://img.shields.io/badge/Redis-v7.0-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
   <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
-  <img src="https://img.shields.io/badge/Tests-271%20Passed-brightgreen?style=for-the-badge&logo=jest&logoColor=white" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-Passing-brightgreen?style=for-the-badge&logo=jest&logoColor=white" alt="Tests" />
 </p>
 
 ---
@@ -54,7 +54,7 @@ flowchart TD
     subgraph Edge["Security & Gateway Layer"]
         Helmet["Helmet Security Headers<br/>(Strict CSP, HSTS, Frameguard, NoSniff)"]
         CORS["Strict Origin Whitelist"]
-        RateLimit["Rate Limiter (ThrottlerGuard & Redis)<br/>Global: 100/min | Auth: 3-5/min"]
+        RateLimit["Rate Limiter (ThrottlerGuard)<br/>Global: 100/min | Auth: 3-5/min"]
         Sanitize["Log & URL Sanitizer Middleware<br/>(Auto-redacts tokens & secrets)"]
     end
 
@@ -73,7 +73,7 @@ flowchart TD
 
     subgraph Data["Persistence & Infrastructure"]
         Postgres[("PostgreSQL 16<br/><b>TypeORM Migrations Only</b><br/><i>(10 Normalized Entities)</i>")]
-        RedisStore[("Redis 7<br/>Rate Limiting & Session Cache")]
+        RedisStore[("Redis 7<br/>Health & Infrastructure Probes")]
         SentryMonitoring["Sentry Exception Monitoring<br/><i>(With Automatic PII Scrubbing)</i>"]
     end
 
@@ -89,9 +89,9 @@ flowchart TD
 
 ## ⚡ Why AuthForge Solves Real-World Problems
 
-### 1. The Concurrent Refresh Problem (Solved with Pessimistic Locking)
-* **The Common Flaw**: When a single-page app loads with 5 parallel API requests, an expired access token triggers 5 simultaneous `/auth/refresh` calls. In standard systems, the first call rotates the token, and the remaining 4 calls fail or detect "token reuse", unceremoniously logging the user out.
-* **The AuthForge Solution**: Every token rotation runs in an isolated database transaction with TypeORM `pessimistic_write` (`SELECT ... FOR UPDATE`). The first request holds the row lock, rotates the token, and stores the new hash. Subsequent concurrent requests either wait and resolve gracefully or fail securely without corrupting session state.
+### 1. Concurrency-Guarded Refresh & Token Reuse Detection
+* **The Common Flaw**: When a single-page app loads with parallel API requests, an expired access token can trigger simultaneous `/auth/refresh` calls. In naive implementations, concurrent calls can collide or corrupt session state.
+* **The AuthForge Solution**: Every token rotation runs in an isolated database transaction with TypeORM `pessimistic_write` (`SELECT ... FOR UPDATE`). The first request acquires the row lock, rotates the token, and writes the new hash. Any subsequent concurrent or replayed request presenting the consumed token is securely detected as token reuse and triggers cascade session revocation to safeguard account integrity.
 
 ### 2. Token Theft & Reuse Detection
 * If an attacker intercepts a rotated refresh token and attempts to replay it, AuthForge detects that the token was already consumed. It immediately:
@@ -255,7 +255,7 @@ Interactive Swagger documentation is available locally at:
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "AdminPassword123!"}' \
+  -d '{"email": "admin@example.com", "password": "Admin@123"}' \
   -c cookies.txt
 ```
 
@@ -340,9 +340,9 @@ docker compose up postgres redis -d
 npm run migration:run
 npm run seed:run
 ```
-> *Default seeded admin credentials:*  
-> **Email**: `admin@example.com`  
-> **Password**: `Admin@123`
+> *Seeded admin credentials (configurable via `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `.env`):*  
+> **Email**: `admin@example.com` (default)  
+> **Password**: `Admin@123` (default)
 
 ### Step 5: Start Application in Watch Mode
 ```bash
@@ -376,16 +376,13 @@ npm run build
 ### Test Results Summary
 
 ```text
-=============================== TEST SUMMARY ===============================
-Unit Test Suites:       53 / 53 passed (100%)
-Unit Tests:            225 / 225 passed (100%)
-E2E Test Suites:         8 / 8 passed (100%)
-E2E Tests:              46 / 46 passed (100%)
-Total Tests:           271 / 271 PASSED
-TypeScript Check:      0 Errors (Strict Mode)
-ESLint Status:         0 Errors, 0 Warnings
-Production Build:      SUCCESSFUL
-============================================================================
+=============================== TEST SUITE ===============================
+Automated Unit Tests:          Executed and verified in CI
+Automated E2E Tests:           Executed against live PostgreSQL & Redis in CI
+TypeScript Strict Check:       0 Errors (Strict Mode)
+ESLint Static Analysis:        0 Errors, 0 Warnings
+Production Build:              SUCCESSFUL
+==========================================================================
 ```
 
 > Continuous validation is enforced on every commit and pull request via [GitHub Actions CI](https://github.com/dhruvchaudhari1606/AuthForge/actions/workflows/ci.yml).

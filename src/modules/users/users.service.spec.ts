@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { QueryDto } from '@common/dto/query.dto';
 import { Role } from '@database/entities/role.entity';
 import { User } from '@database/entities/user.entity';
+import { ConfigService } from '@nestjs/config';
 import { MailTemplate } from '@common/constants/mail.constants';
 import { MailService } from '@modules/mail/mail.service';
 import { UsersService } from './users.service';
@@ -27,13 +28,25 @@ describe('UsersService', () => {
     send: jest.fn(),
   } as unknown as MailService;
 
+  const configService = {
+    get: jest.fn((key: string, defaultValue?: unknown) => {
+      if (key === 'security.bcryptSaltRounds') return 12;
+      return defaultValue;
+    }),
+  } as unknown as ConfigService;
+
   const hashMock = bcrypt.hash as jest.MockedFunction<typeof bcrypt.hash>;
 
   let service: UsersService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new UsersService(userRepository, roleRepository, mailService);
+    service = new UsersService(
+      userRepository,
+      roleRepository,
+      mailService,
+      configService,
+    );
   });
 
   it('finds user by id with role relation', async () => {
@@ -89,6 +102,7 @@ describe('UsersService', () => {
     expect(roleRepository.findOne).toHaveBeenCalledWith({
       where: { name: 'user' },
     });
+    expect(hashMock).toHaveBeenCalledWith('password123', 12);
     expect(userRepository.create).toHaveBeenCalledWith({
       name: 'John Doe',
       first_name: 'John',

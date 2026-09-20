@@ -48,6 +48,7 @@ describe('configuration', () => {
       app: {
         port: 4000,
         env: 'staging',
+        trustProxy: 'loopback',
       },
       cors: {
         origin: 'http://localhost:3001',

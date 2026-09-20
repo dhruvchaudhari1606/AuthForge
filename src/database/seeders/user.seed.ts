@@ -19,18 +19,22 @@ export default class UserSeeder implements Seeder {
       return;
     }
 
+    const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@example.com';
+    const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'Admin@123';
+
     const existingAdmin = await userRepository.findOne({
-      where: { email: 'admin@example.com' },
+      where: { email: adminEmail },
     });
 
     if (!existingAdmin) {
-      const password = await bcrypt.hash('Admin@123', 10);
+      const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
+      const password = await bcrypt.hash(adminPassword, saltRounds);
 
       const adminUser = userRepository.create({
         name: 'Admin User',
         first_name: 'Admin',
         last_name: 'User',
-        email: 'admin@example.com',
+        email: adminEmail,
         password,
         role: adminRole,
         roles: [adminRole],
@@ -41,9 +45,9 @@ export default class UserSeeder implements Seeder {
 
       await userRepository.save(adminUser);
 
-      console.log('Admin user created.');
+      console.log(`Admin user created (${adminEmail}).`);
     } else {
-      console.log('Admin user already exists.');
+      console.log(`Admin user already exists (${adminEmail}).`);
     }
   }
 }

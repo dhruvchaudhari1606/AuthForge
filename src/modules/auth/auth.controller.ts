@@ -68,7 +68,7 @@ export class AuthController {
   ) {
     const data = await this.authService.login(loginDto, req);
     this.cookieService.setAuthCookies(res, data);
-    return data;
+    return { message: 'Authenticated successfully' };
   }
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -98,7 +98,7 @@ export class AuthController {
 
       const tokens = await this.authService.refresh(refreshToken);
       this.cookieService.setAuthCookies(res, tokens);
-      return tokens;
+      return { message: 'Tokens refreshed successfully' };
     } catch (error) {
       this.cookieService.clearAuthCookies(res);
       throw error;

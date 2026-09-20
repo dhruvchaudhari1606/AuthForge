@@ -105,6 +105,9 @@ jobs:
         with:
           node-version: 22
 
+      # Dependency security audit policy:
+      # Scans dependencies for high/critical vulnerabilities.
+      # Informational gate with continue-on-error: true ensures vulnerability visibility in CI logs without breaking builds unexpectedly for upstream transitive disclosures.
       - name: Audit Dependencies for High/Critical Vulnerabilities
         run: npm audit --audit-level=high
         continue-on-error: true

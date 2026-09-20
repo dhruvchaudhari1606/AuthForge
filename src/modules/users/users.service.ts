@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -26,6 +27,7 @@ export class UsersService {
     private readonly roleRepository: Repository<Role>,
 
     private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async findById(id: string): Promise<User | null> {
@@ -55,7 +57,11 @@ export class UsersService {
       where: { name: 'user' },
     });
 
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const saltRounds = this.configService.get<number>(
+      'security.bcryptSaltRounds',
+      10,
+    );
+    const hashedPassword = await bcrypt.hash(data.password, saltRounds);
 
     const user = this.userRepository.create({
       name: data.name,

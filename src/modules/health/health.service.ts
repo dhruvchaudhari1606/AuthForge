@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { createRedisConnection } from '@common/utils/redis.util';
+import { LoggerService } from '@common/logger/logger.service';
 
 export interface DependencyHealth {
   status: 'up' | 'down';
@@ -22,6 +23,7 @@ export class HealthService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {}
 
   async check(): Promise<HealthStatusPayload> {
@@ -48,11 +50,12 @@ export class HealthService {
       await this.dataSource.query('SELECT 1');
       return { status: 'up' };
     } catch (error: unknown) {
-      return {
-        status: 'down',
-        message:
-          error instanceof Error ? error.message : 'Database check failed',
-      };
+      this.logger.error(
+        'Database health check failed',
+        error instanceof Error ? error.stack : String(error),
+        HealthService.name,
+      );
+      return { status: 'down' };
     }
   }
 
@@ -61,18 +64,23 @@ export class HealthService {
 
     try {
       const response: string = await redis.ping();
+      const isUp = response === 'PONG';
+      if (!isUp) {
+        this.logger.warn(
+          `Unexpected Redis response: ${response}`,
+          HealthService.name,
+        );
+      }
       return {
-        status: response === 'PONG' ? 'up' : 'down',
-        message:
-          response === 'PONG'
-            ? undefined
-            : `Unexpected Redis response: ${response}`,
+        status: isUp ? 'up' : 'down',
       };
     } catch (error: unknown) {
-      return {
-        status: 'down',
-        message: error instanceof Error ? error.message : 'Redis check failed',
-      };
+      this.logger.error(
+        'Redis health check failed',
+        error instanceof Error ? error.stack : String(error),
+        HealthService.name,
+      );
+      return { status: 'down' };
     } finally {
       await redis.quit();
     }

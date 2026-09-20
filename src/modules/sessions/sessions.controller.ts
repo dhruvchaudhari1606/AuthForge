@@ -21,7 +21,7 @@ import { Request, Response } from 'express';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { AuthUser } from '@app-types/authUser.type';
-import { SessionService } from '@modules/auth/sessions/session.service';
+import { SessionService } from './sessions.service';
 import { TokenService } from '@modules/auth/tokens/token.service';
 import { CookieService } from '@modules/auth/cookies/cookie.service';
 import { AuditService } from '@modules/audit/audit.service';

@@ -1,4 +1,5 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { LoggerService } from '@common/logger/logger.service';
@@ -66,6 +67,10 @@ describe('AuthService', () => {
     findByUserId: jest.fn(),
   } as unknown as AuditService;
 
+  const configService = {
+    get: jest.fn().mockReturnValue('30d'),
+  } as unknown as ConfigService;
+
   let service: AuthService;
 
   beforeEach(() => {
@@ -78,6 +83,7 @@ describe('AuthService', () => {
       tokenService,
       passwordService,
       auditService,
+      configService,
     );
   });
 
@@ -93,7 +99,7 @@ describe('AuthService', () => {
         password: 'password123',
         language: 'en',
       }),
-    ).rejects.toThrow(UnauthorizedException);
+    ).rejects.toThrow(ConflictException);
 
     expect(logger.warn).toHaveBeenCalledWith(
       'User already exists: john@example.com',

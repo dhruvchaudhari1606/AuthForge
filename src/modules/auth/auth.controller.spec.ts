@@ -72,9 +72,9 @@ describe('AuthController', () => {
     };
     (authService.login as jest.Mock).mockResolvedValue(tokenData);
 
-    await expect(controller.login(req, loginDto, res)).resolves.toEqual(
-      tokenData,
-    );
+    await expect(controller.login(req, loginDto, res)).resolves.toEqual({
+      message: 'Authenticated successfully',
+    });
     expect(authService.login).toHaveBeenCalledWith(loginDto, req);
     expect(cookieService.setAuthCookies).toHaveBeenCalledWith(res, tokenData);
   });
@@ -93,7 +93,7 @@ describe('AuthController', () => {
     expect(cookieService.clearAuthCookies).toHaveBeenCalledWith(res);
   });
 
-  it('sets new cookies and returns tokens on successful refresh', async () => {
+  it('sets new cookies and returns success message on successful refresh', async () => {
     const controller = createController();
     const req = {} as Request;
     const res = {} as Response;
@@ -112,7 +112,7 @@ describe('AuthController', () => {
 
     expect(authService.refresh).toHaveBeenCalledWith('old-refresh');
     expect(cookieService.setAuthCookies).toHaveBeenCalledWith(res, tokens);
-    expect(result).toEqual(tokens);
+    expect(result).toEqual({ message: 'Tokens refreshed successfully' });
   });
 
   it('clears cookies and returns success message on logout', async () => {

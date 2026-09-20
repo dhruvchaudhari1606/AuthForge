@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ExecutionContext,
   INestApplication,
   UnauthorizedException,
@@ -194,9 +195,9 @@ describe('Auth routes (e2e)', () => {
     });
   });
 
-  it('POST /api/v1/auth/register returns 401 when email is already taken', async () => {
+  it('POST /api/v1/auth/register returns 409 when email is already taken', async () => {
     authServiceMock.register.mockRejectedValue(
-      new UnauthorizedException('User already exists'),
+      new ConflictException('User already exists'),
     );
 
     const response = await request(app.getHttpServer())
@@ -207,11 +208,11 @@ describe('Auth routes (e2e)', () => {
         password: 'password123',
         language: 'en',
       })
-      .expect(401);
+      .expect(409);
 
     expect(response.body).toMatchObject({
       success: false,
-      statusCode: 401,
+      statusCode: 409,
       message: 'User already exists',
     });
   });
@@ -242,8 +243,7 @@ describe('Auth routes (e2e)', () => {
       success: true,
       message: 'Request successful',
       data: {
-        accessToken: 'jwt-token',
-        refreshToken: 'refresh-token',
+        message: 'Authenticated successfully',
       },
     });
 
@@ -308,8 +308,7 @@ describe('Auth routes (e2e)', () => {
       success: true,
       message: 'Request successful',
       data: {
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
+        message: 'Tokens refreshed successfully',
       },
     });
 

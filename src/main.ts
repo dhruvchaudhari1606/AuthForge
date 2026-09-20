@@ -21,8 +21,6 @@ async function bootstrap() {
     rawBody: true,
   });
 
-  app.set('trust proxy', 'loopback');
-
   app.use(cookieParser());
 
   app.setGlobalPrefix('api');
@@ -34,6 +32,9 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const loggerService = app.get(LoggerService);
+
+  const trustProxy = configService.get<string>('app.trustProxy') || 'loopback';
+  app.set('trust proxy', trustProxy);
 
   initSentry(configService.get<string>('sentry.dsn'));
 
