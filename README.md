@@ -1,8 +1,8 @@
 # 🛡️ AuthForge
 
 <p align="center">
-  <strong>Enterprise-Grade Authentication & Identity Microservice</strong><br>
-  <em>Built for scalability, zero-trust security, and high concurrency using NestJS, TypeScript, PostgreSQL (TypeORM), and Redis.</em>
+  <strong>Production-Oriented Authentication & Identity Service</strong><br>
+  <em>Built for scalability, concurrency safety, and robust security practices using NestJS, TypeScript, PostgreSQL (TypeORM), and Redis.</em>
 </p>
 
 <p align="center">
@@ -16,6 +16,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/dhruvchaudhari1606/AuthForge/actions/workflows/ci.yml"><img src="https://github.com/dhruvchaudhari1606/AuthForge/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI Status" /></a>
   <img src="https://img.shields.io/badge/Node.js-v22.0+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/NestJS-v11.0-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
   <img src="https://img.shields.io/badge/TypeScript-v5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
@@ -32,9 +33,9 @@
 
 Most authentication starters are toy projects storing JWTs in browser `localStorage`, using naive refresh token implementations that break under concurrent network requests, and hardcoding basic user/admin roles.
 
-**AuthForge** is designed as a **drop-in, portfolio-grade enterprise authentication backend** that adheres to strict zero-trust principles:
-1. **Immune to XSS Token Theft**: Employs hardened `HttpOnly`, `Secure`, `SameSite` browser cookies (with Bearer token fallback for native mobile or API consumers).
-2. **Zero Race Conditions on Token Refresh**: Uses PostgreSQL pessimistic row-level locking (`SELECT ... FOR UPDATE`) to eliminate the race condition where concurrent frontend requests cause simultaneous refresh failures.
+**AuthForge** is a **production-oriented authentication and identity service** built to demonstrate real-world backend engineering and defensive security practices:
+1. **XSS Token Theft Mitigation**: Employs hardened `HttpOnly`, `Secure`, `SameSite` browser cookies to prevent client-side JavaScript access to tokens (with Bearer token fallback for native mobile or API consumers).
+2. **Race Condition Prevention on Token Refresh**: Uses PostgreSQL pessimistic row-level locking (`SELECT ... FOR UPDATE`) to eliminate the race condition where concurrent frontend requests cause simultaneous refresh failures.
 3. **Automatic Replay Attack & Token Reuse Detection**: Rotating refresh tokens are cryptographically tracked; reusing an invalidated token instantly triggers an immediate security kill-switch that revokes all active user sessions across all devices.
 4. **Dynamic Database RBAC**: Fine-grained permissions resolved dynamically at the database level (`@RequirePermissions(...)`), with built-in system role immutability.
 5. **Strict Data Privacy**: Automatic URL parameter sanitization and Sentry payload scrubbing to ensure tokens, passwords, and secrets never touch logs.
@@ -92,7 +93,7 @@ flowchart TD
 * **The Common Flaw**: When a single-page app loads with 5 parallel API requests, an expired access token triggers 5 simultaneous `/auth/refresh` calls. In standard systems, the first call rotates the token, and the remaining 4 calls fail or detect "token reuse", unceremoniously logging the user out.
 * **The AuthForge Solution**: Every token rotation runs in an isolated database transaction with TypeORM `pessimistic_write` (`SELECT ... FOR UPDATE`). The first request holds the row lock, rotates the token, and stores the new hash. Subsequent concurrent requests either wait and resolve gracefully or fail securely without corrupting session state.
 
-### 2. Token Theft & Reuse Defense (Zero-Trust)
+### 2. Token Theft & Reuse Detection
 * If an attacker intercepts a rotated refresh token and attempts to replay it, AuthForge detects that the token was already consumed. It immediately:
   1. Revokes the compromised session across all devices.
   2. Records a high-severity `TOKEN_REUSE` audit record with IP, user-agent, and timestamp.
@@ -319,8 +320,8 @@ curl -X GET http://localhost:3000/api/v1/sessions \
 
 ### Step 1: Clone & Install Dependencies
 ```bash
-git clone https://github.com/dhruv/authforge.git
-cd authforge
+git clone https://github.com/dhruvchaudhari1606/AuthForge.git
+cd AuthForge
 npm ci
 ```
 
@@ -387,6 +388,8 @@ Production Build:      SUCCESSFUL
 ============================================================================
 ```
 
+> Continuous validation is enforced on every commit and pull request via [GitHub Actions CI](https://github.com/dhruvchaudhari1606/AuthForge/actions/workflows/ci.yml).
+
 ---
 
 ## 🛡️ Security & Production Checklist
@@ -404,6 +407,7 @@ Production Build:      SUCCESSFUL
 - [x] **Audit Logging**: Structured database audit trail for compliance.
 - [x] **Hardened Docker**: Multi-stage build running under non-root user (`USER node`) with container healthcheck.
 - [x] **Database Safety**: 100% migration-driven with `synchronize: false` enforced.
+- [x] **Public Security Policy**: Documented disclosure guidelines, SLAs, and security guarantees ([SECURITY.md](SECURITY.md)).
 
 ---
 
@@ -427,6 +431,12 @@ The included GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workf
 - [ ] OAuth2 / OpenID Connect Social Logins (Google, GitHub, Microsoft)
 - [ ] WebAuthn / FIDO2 Passkeys support
 - [ ] Multi-tenant workspace and organization isolation
+
+---
+
+## 🔒 Security Policy
+
+AuthForge follows strict responsible disclosure guidelines. If you discover a potential vulnerability, please review our [Security Policy](SECURITY.md) and report it via GitHub Private Vulnerability Reporting or direct maintainer contact rather than public issue trackers.
 
 ---
 

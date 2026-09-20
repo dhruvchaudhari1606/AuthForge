@@ -69,18 +69,23 @@ export class User extends BaseEntity {
   roles?: Role[];
 
   @OneToMany(() => UserRole, (userRole) => userRole.user)
+  @Exclude({ toPlainOnly: true })
   userRoles?: UserRole[];
 
   @OneToMany(() => Session, (session) => session.user)
+  @Exclude({ toPlainOnly: true })
   sessions!: Session[];
 
   @OneToMany(() => PasswordReset, (reset) => reset.user)
+  @Exclude({ toPlainOnly: true })
   passwordResets?: PasswordReset[];
 
   @OneToMany(() => EmailVerification, (verification) => verification.user)
+  @Exclude({ toPlainOnly: true })
   emailVerifications?: EmailVerification[];
 
   @OneToMany(() => AuditLog, (audit) => audit.user)
+  @Exclude({ toPlainOnly: true })
   auditLogs?: AuditLog[];
 
   @Column({ type: 'int', default: 0 })

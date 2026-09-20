@@ -1,8 +1,10 @@
 import {
+  ClassSerializerInterceptor,
   INestApplication,
   ValidationPipe,
   VersioningType,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { TestingModuleBuilder } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from '../../../src/common/filters/http-exception.filter';
@@ -36,7 +38,10 @@ export async function createE2eApp(
     }),
   );
 
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
+    new ResponseInterceptor(),
+  );
   app.useGlobalFilters(new HttpExceptionFilter(testLogger));
 
   await app.init();

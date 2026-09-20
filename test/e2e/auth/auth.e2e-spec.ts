@@ -13,6 +13,7 @@ import { createE2eApp } from '../setup/create-e2e-app';
 import { LoggerService } from '@common/logger/logger.service';
 
 import { CookieService } from '../../../src/modules/auth/cookies/cookie.service';
+import { User } from '../../../src/database/entities/user.entity';
 
 type RequestWithUser = {
   user?: { userId: string; email: string; role: string };
@@ -135,6 +136,39 @@ describe('Auth routes (e2e)', () => {
         language: 'en',
       },
     });
+  });
+
+  it('POST /api/v1/auth/register strips password and token_version from serialized entity', async () => {
+    const user = new User();
+    user.id = 'user-secret';
+    user.name = 'Secret User';
+    user.email = 'secret@example.com';
+    user.password = '$2b$10$secretHashedPasswordThatShouldNeverLeak';
+    user.token_version = 42;
+    user.language = 'en';
+
+    authServiceMock.register.mockResolvedValue(user);
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        name: 'Secret User',
+        email: 'secret@example.com',
+        password: 'password123',
+        language: 'en',
+      })
+      .expect(201);
+
+    const body = response.body as {
+      success: boolean;
+      data: Record<string, unknown>;
+    };
+
+    expect(body.data['id']).toBe('user-secret');
+    expect(body.data['email']).toBe('secret@example.com');
+    expect(body.data['password']).toBeUndefined();
+    expect(body.data['token_version']).toBeUndefined();
+    expect(JSON.stringify(response.body)).not.toContain('secretHashedPassword');
   });
 
   it('POST /api/v1/auth/register validates request body', async () => {

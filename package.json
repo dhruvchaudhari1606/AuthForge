@@ -3,8 +3,16 @@
   "version": "0.0.1",
   "description": "AuthForge — Production-oriented Authentication & Identity Service",
   "author": "Dhruv A Chaudhari",
-  "private": true,
-  "license": "UNLICENSED",
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dhruvchaudhari1606/AuthForge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dhruvchaudhari1606/AuthForge/issues"
+  },
+  "homepage": "https://github.com/dhruvchaudhari1606/AuthForge#readme",
   "engines": {
     "node": ">=22.0.0"
   },

@@ -23,6 +23,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthUser } from '@app-types/authUser.type';
 import { LoggerService } from '@common/logger/logger.service';
 import { CookieService } from './cookies/cookie.service';
+import { UserResponseDto } from '@modules/users/dto/user-response.dto';
 
 @ApiTags('Auth')
 @Controller({
@@ -40,7 +41,11 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new user account' })
-  @ApiResponse({ status: 201, description: 'User registered successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully',
+    type: UserResponseDto,
+  })
   @ApiResponse({ status: 409, description: 'Email already registered' })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
