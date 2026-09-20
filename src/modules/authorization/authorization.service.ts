@@ -42,15 +42,6 @@ export class AuthorizationService {
       return [];
     }
 
-    // Admins have all permissions by default
-    const adminRoleName: string = ROLES.ADMIN;
-    const isGlobalAdmin = user.roles?.some((r) => r.name === adminRoleName);
-
-    if (isGlobalAdmin) {
-      const allPermissions = await this.permissionRepository.find();
-      return allPermissions.map((p) => p.name);
-    }
-
     const permissionSet = new Set<string>();
 
     if (user.roles) {

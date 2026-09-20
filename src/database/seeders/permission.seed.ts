@@ -46,15 +46,21 @@ export default class PermissionSeeder implements Seeder {
     }
 
     // Attach all permissions to the admin role
-    const adminRole = await roleRepository.findOne({
+    let adminRole = await roleRepository.findOne({
       where: { name: 'admin' },
       relations: ['permissions'],
     });
 
-    if (adminRole) {
-      adminRole.permissions = savedPermissions;
+    if (!adminRole) {
+      adminRole = roleRepository.create({
+        name: 'admin',
+        description: 'System Administrator',
+      });
       await roleRepository.save(adminRole);
-      console.log('✓ Attached permissions to admin role');
     }
+
+    adminRole.permissions = savedPermissions;
+    await roleRepository.save(adminRole);
+    console.log('✓ Attached permissions to admin role');
   }
 }

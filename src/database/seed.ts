@@ -24,11 +24,20 @@ async function seed() {
     await AppDataSource.initialize();
     console.log('✓ Database connected\n');
 
-    // Get all seeder files
+    // Get all seeder files sorted by explicit dependency order
+    const SEED_ORDER = ['role.seed.ts', 'permission.seed.ts', 'user.seed.ts'];
     const seedersPath = path.join(__dirname, 'seeders');
     const seederFiles = fs
       .readdirSync(seedersPath)
-      .filter((file) => file.endsWith('.seed.ts'));
+      .filter((file) => file.endsWith('.seed.ts'))
+      .sort((a, b) => {
+        const indexA = SEED_ORDER.indexOf(a);
+        const indexB = SEED_ORDER.indexOf(b);
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return a.localeCompare(b);
+      });
 
     // Run each seeder
     for (const file of seederFiles) {

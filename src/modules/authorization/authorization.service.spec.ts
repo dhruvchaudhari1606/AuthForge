@@ -47,21 +47,21 @@ describe('AuthorizationService', () => {
   });
 
   describe('getUserPermissions and hasPermission', () => {
-    it('returns all system permissions when user is an admin', async () => {
+    it('returns permissions assigned to role', async () => {
       const adminUser = {
         id: 'user-1',
-        roles: [{ name: ROLES.ADMIN }],
+        roles: [
+          {
+            name: ROLES.ADMIN,
+            permissions: [
+              { id: 'p1', name: 'users.read' },
+              { id: 'p2', name: 'roles.manage' },
+            ],
+          },
+        ],
       } as unknown as User;
 
-      const allPermissions = [
-        { id: 'p1', name: 'users.read' },
-        { id: 'p2', name: 'roles.manage' },
-      ] as Permission[];
-
       (userRepository.findOne as jest.Mock).mockResolvedValue(adminUser);
-      (permissionRepository.find as jest.Mock).mockResolvedValue(
-        allPermissions,
-      );
 
       const perms = await service.getUserPermissions('user-1');
       expect(perms).toEqual(['users.read', 'roles.manage']);
