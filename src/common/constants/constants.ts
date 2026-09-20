@@ -38,3 +38,5 @@ export enum AuditEvent {
   PERMISSION_CHANGED = 'PERMISSION_CHANGED',
   PERMISSIONS_CHANGED = 'PERMISSIONS_CHANGED',
 }
+
+export * from './permissions.constant';

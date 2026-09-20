@@ -4,7 +4,6 @@ import { QueryDto } from '@common/dto/query.dto';
 import { Role } from '@database/entities/role.entity';
 import { User } from '@database/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
-import { MailTemplate } from '@common/constants/mail.constants';
 import { MailService } from '@modules/mail/mail.service';
 import { UsersService } from './users.service';
 
@@ -110,18 +109,11 @@ describe('UsersService', () => {
       email: 'john@example.com',
       password: 'hashed-password',
       roles: [role],
-      status: 'active',
+      status: 'pending_verification',
       language: 'en',
     });
     expect(userRepository.save).toHaveBeenCalledWith(createdEntity);
-
-    expect(mailService.send).toHaveBeenCalledWith({
-      to: 'john@example.com',
-      subjectKey: 'mail.welcome_subject',
-      template: MailTemplate.WELCOME,
-      context: { name: 'John Doe' },
-      language: 'en',
-    });
+    expect(mailService.send).not.toHaveBeenCalled();
   });
 
   it('throws InternalServerErrorException when default user role is missing', async () => {

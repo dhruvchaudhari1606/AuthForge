@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 
 import { UsersModule } from '@modules/users/users.module';
 import { SessionsModule } from '@modules/sessions/sessions.module';
+import { EmailVerificationModule } from '@modules/email-verification/email-verification.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 import { LoggerService } from '@common/logger/logger.service';
@@ -21,6 +22,7 @@ import { CookieService } from './cookies/cookie.service';
   imports: [
     UsersModule,
     forwardRef(() => SessionsModule),
+    EmailVerificationModule,
 
     JwtModule.registerAsync({
       imports: [ConfigModule],

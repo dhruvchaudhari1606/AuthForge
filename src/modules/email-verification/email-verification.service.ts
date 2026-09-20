@@ -139,6 +139,22 @@ export class EmailVerificationService {
       event: AuditEvent.EMAIL_VERIFIED,
       metadata: { email: user.email },
     });
+
+    await this.mailService.send({
+      to: user.email,
+      subjectKey: 'mail.welcome_subject',
+      template: MailTemplate.WELCOME,
+      language: user.language || 'en',
+      context: {
+        name: user.name,
+      },
+    });
+  }
+
+  async sendVerification(user: User): Promise<string> {
+    const token = await this.createVerificationToken(user);
+    await this.sendVerificationEmail(user, token);
+    return token;
   }
 
   async resendVerification(dto: ResendVerificationDto): Promise<void> {
@@ -153,7 +169,6 @@ export class EmailVerificationService {
       return;
     }
 
-    const token = await this.createVerificationToken(user);
-    await this.sendVerificationEmail(user, token);
+    await this.sendVerification(user);
   }
 }

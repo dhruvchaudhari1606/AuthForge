@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { AuditEvent, UserStatus } from '@common/constants/constants';
 
 import { AuditService } from '@modules/audit/audit.service';
+import { EmailVerificationService } from '@modules/email-verification/email-verification.service';
 
 describe('AuthService', () => {
   const usersService = {
@@ -67,6 +68,10 @@ describe('AuthService', () => {
     findByUserId: jest.fn(),
   } as unknown as AuditService;
 
+  const emailVerificationService = {
+    sendVerification: jest.fn(),
+  } as unknown as EmailVerificationService;
+
   const configService = {
     get: jest.fn().mockReturnValue('30d'),
   } as unknown as ConfigService;
@@ -84,6 +89,7 @@ describe('AuthService', () => {
       passwordService,
       auditService,
       configService,
+      emailVerificationService,
     );
   });
 
@@ -129,6 +135,9 @@ describe('AuthService', () => {
       password: 'password123',
       language: 'en',
     });
+    expect(emailVerificationService.sendVerification).toHaveBeenCalledWith(
+      createdUser,
+    );
   });
 
   it('rejects login when user does not exist', async () => {
@@ -142,6 +151,24 @@ describe('AuthService', () => {
     ).rejects.toThrow(UnauthorizedException);
 
     expect(jwtService.signAsync).not.toHaveBeenCalled();
+  });
+
+  it('rejects login when account is pending email verification', async () => {
+    (usersService.findByEmail as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'john@example.com',
+      password: 'hashed',
+      status: UserStatus.PENDING_VERIFICATION,
+    });
+
+    await expect(
+      service.login(
+        { email: 'john@example.com', password: 'password123' },
+        mockReq,
+      ),
+    ).rejects.toThrow(
+      new UnauthorizedException('Please verify your email before logging in'),
+    );
   });
 
   it('rejects login when password comparison fails', async () => {

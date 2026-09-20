@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { PermissionsGuard } from './permissions.guard';
 import { AuthorizationService } from '@modules/authorization/authorization.service';
 import { ROLES } from '@common/constants/constants';
+import { PERMISSIONS } from '@common/constants/permissions.constant';
 
 describe('PermissionsGuard', () => {
   let guard: PermissionsGuard;
@@ -37,10 +38,12 @@ describe('PermissionsGuard', () => {
   });
 
   it('allows access when user possesses all required permissions', async () => {
-    (reflector.getAllAndOverride as jest.Mock).mockReturnValue(['users.read']);
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue([
+      PERMISSIONS.USERS_READ,
+    ]);
     (authorizationService.getUserPermissions as jest.Mock).mockResolvedValue([
-      'users.read',
-      'users.update',
+      PERMISSIONS.USERS_READ,
+      PERMISSIONS.USERS_UPDATE,
     ]);
 
     await expect(guard.canActivate(mockContext)).resolves.toBe(true);
@@ -48,18 +51,20 @@ describe('PermissionsGuard', () => {
 
   it('denies access when user is missing any required permission', async () => {
     (reflector.getAllAndOverride as jest.Mock).mockReturnValue([
-      'users.read',
+      PERMISSIONS.USERS_READ,
       'users.manage',
     ]);
     (authorizationService.getUserPermissions as jest.Mock).mockResolvedValue([
-      'users.read',
+      PERMISSIONS.USERS_READ,
     ]);
 
     await expect(guard.canActivate(mockContext)).resolves.toBe(false);
   });
 
   it('denies access when user is not present on request', async () => {
-    (reflector.getAllAndOverride as jest.Mock).mockReturnValue(['users.read']);
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue([
+      PERMISSIONS.USERS_READ,
+    ]);
 
     const unauthContext = {
       getHandler: jest.fn(),

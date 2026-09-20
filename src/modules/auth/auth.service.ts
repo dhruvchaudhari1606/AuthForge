@@ -17,6 +17,7 @@ import { AuditService } from '@modules/audit/audit.service';
 import { Request } from 'express';
 import { getDeviceInfo } from '@common/utils/device.util';
 import { AuditEvent, UserStatus } from '@common/constants/constants';
+import { EmailVerificationService } from '@modules/email-verification/email-verification.service';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +30,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
+    private readonly emailVerificationService: EmailVerificationService,
   ) {}
 
   private getRefreshExpirationDate(): Date {
@@ -63,6 +65,8 @@ export class AuthService {
         metadata: { email: registerDetails.email },
       });
 
+      await this.emailVerificationService.sendVerification(user);
+
       return user;
     } catch (error) {
       this.logger.error(
@@ -85,6 +89,17 @@ export class AuthService {
           metadata: { email: loginDto.email, reason: 'user_not_found' },
         });
         throw new UnauthorizedException('Invalid credentials');
+      }
+
+      if (user.status === UserStatus.PENDING_VERIFICATION) {
+        await this.auditService.log({
+          userId: user.id,
+          event: AuditEvent.AUTH_LOGIN_FAILURE,
+          metadata: { email: loginDto.email, status: user.status },
+        });
+        throw new UnauthorizedException(
+          'Please verify your email before logging in',
+        );
       }
 
       if (

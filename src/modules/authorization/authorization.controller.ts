@@ -23,6 +23,7 @@ import { RolesGuard } from '@common/guards/roles.guard';
 import { PermissionsGuard } from '@common/guards/permissions.guard';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { PERMISSIONS } from '@common/constants/permissions.constant';
 import { AuthUser } from '@app-types/authUser.type';
 import { AuthorizationService } from './authorization.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -40,7 +41,7 @@ export class AuthorizationController {
   constructor(private readonly authorizationService: AuthorizationService) {}
 
   @Get('roles')
-  @RequirePermissions('roles.read')
+  @RequirePermissions(PERMISSIONS.ROLES_READ)
   @ApiOperation({ summary: 'List all roles and their associated permissions' })
   @ApiResponse({ status: 200, description: 'Roles retrieved successfully' })
   async getRoles() {
@@ -48,7 +49,7 @@ export class AuthorizationController {
   }
 
   @Get('roles/:id')
-  @RequirePermissions('roles.read')
+  @RequirePermissions(PERMISSIONS.ROLES_READ)
   @ApiOperation({ summary: 'Get a specific role by UUID' })
   @ApiParam({ name: 'id', description: 'Role UUID' })
   @ApiResponse({ status: 200, description: 'Role details retrieved' })
@@ -58,7 +59,7 @@ export class AuthorizationController {
   }
 
   @Post('roles')
-  @RequirePermissions('roles.manage')
+  @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
   @ApiOperation({ summary: 'Create a new custom role' })
   @ApiResponse({ status: 201, description: 'Role created successfully' })
   @ApiResponse({ status: 409, description: 'Role name already exists' })
@@ -67,7 +68,7 @@ export class AuthorizationController {
   }
 
   @Patch('roles/:id')
-  @RequirePermissions('roles.manage')
+  @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
   @ApiOperation({ summary: 'Update role details' })
   @ApiParam({ name: 'id', description: 'Role UUID' })
   @ApiResponse({ status: 200, description: 'Role updated successfully' })
@@ -85,7 +86,7 @@ export class AuthorizationController {
 
   @Delete('roles/:id')
   @HttpCode(HttpStatus.OK)
-  @RequirePermissions('roles.manage')
+  @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
   @ApiOperation({ summary: 'Delete a custom role (built-in roles protected)' })
   @ApiParam({ name: 'id', description: 'Role UUID' })
   @ApiResponse({ status: 200, description: 'Role deleted successfully' })
@@ -102,7 +103,7 @@ export class AuthorizationController {
   }
 
   @Post('roles/:id/permissions')
-  @RequirePermissions('permissions.manage')
+  @RequirePermissions(PERMISSIONS.PERMISSIONS_MANAGE)
   @ApiOperation({ summary: 'Assign permissions to a role' })
   @ApiParam({ name: 'id', description: 'Role UUID' })
   @ApiResponse({ status: 200, description: 'Permissions updated on role' })
@@ -119,7 +120,7 @@ export class AuthorizationController {
   }
 
   @Get('permissions')
-  @RequirePermissions('permissions.read')
+  @RequirePermissions(PERMISSIONS.PERMISSIONS_READ)
   @ApiOperation({ summary: 'List all available system permissions' })
   @ApiResponse({ status: 200, description: 'Permissions list retrieved' })
   async getPermissions() {
@@ -128,7 +129,7 @@ export class AuthorizationController {
 
   @Post('users/:id/roles')
   @HttpCode(HttpStatus.OK)
-  @RequirePermissions('roles.manage')
+  @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
   @ApiOperation({ summary: 'Assign a role to a target user' })
   @ApiParam({ name: 'id', description: 'Target user UUID' })
   @ApiResponse({ status: 200, description: 'Role assigned successfully' })
@@ -147,7 +148,7 @@ export class AuthorizationController {
 
   @Delete('users/:id/roles/:roleName')
   @HttpCode(HttpStatus.OK)
-  @RequirePermissions('roles.manage')
+  @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
   @ApiOperation({ summary: 'Remove a role from a target user' })
   @ApiParam({ name: 'id', description: 'Target user UUID' })
   @ApiParam({ name: 'roleName', description: 'Role name to remove' })

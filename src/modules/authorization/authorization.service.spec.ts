@@ -10,6 +10,7 @@ import { Permission } from '@database/entities/permission.entity';
 import { User } from '@database/entities/user.entity';
 import { AuditService } from '@modules/audit/audit.service';
 import { AuditEvent, ROLES } from '@common/constants/constants';
+import { PERMISSIONS } from '@common/constants/permissions.constant';
 
 describe('AuthorizationService', () => {
   let service: AuthorizationService;
@@ -54,8 +55,8 @@ describe('AuthorizationService', () => {
           {
             name: ROLES.ADMIN,
             permissions: [
-              { id: 'p1', name: 'users.read' },
-              { id: 'p2', name: 'roles.manage' },
+              { id: 'p1', name: PERMISSIONS.USERS_READ },
+              { id: 'p2', name: PERMISSIONS.ROLES_MANAGE },
             ],
           },
         ],
@@ -64,9 +65,12 @@ describe('AuthorizationService', () => {
       (userRepository.findOne as jest.Mock).mockResolvedValue(adminUser);
 
       const perms = await service.getUserPermissions('user-1');
-      expect(perms).toEqual(['users.read', 'roles.manage']);
+      expect(perms).toEqual([PERMISSIONS.USERS_READ, PERMISSIONS.ROLES_MANAGE]);
 
-      const has = await service.hasPermission('user-1', 'roles.manage');
+      const has = await service.hasPermission(
+        'user-1',
+        PERMISSIONS.ROLES_MANAGE,
+      );
       expect(has).toBe(true);
     });
 
@@ -76,7 +80,7 @@ describe('AuthorizationService', () => {
         roles: [
           {
             name: ROLES.USER,
-            permissions: [{ id: 'p1', name: 'users.read' }],
+            permissions: [{ id: 'p1', name: PERMISSIONS.USERS_READ }],
           },
         ],
       } as unknown as User;
@@ -84,12 +88,18 @@ describe('AuthorizationService', () => {
       (userRepository.findOne as jest.Mock).mockResolvedValue(standardUser);
 
       const perms = await service.getUserPermissions('user-2');
-      expect(perms).toEqual(['users.read']);
+      expect(perms).toEqual([PERMISSIONS.USERS_READ]);
 
-      const hasRead = await service.hasPermission('user-2', 'users.read');
+      const hasRead = await service.hasPermission(
+        'user-2',
+        PERMISSIONS.USERS_READ,
+      );
       expect(hasRead).toBe(true);
 
-      const hasManage = await service.hasPermission('user-2', 'roles.manage');
+      const hasManage = await service.hasPermission(
+        'user-2',
+        PERMISSIONS.ROLES_MANAGE,
+      );
       expect(hasManage).toBe(false);
     });
 

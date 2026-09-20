@@ -5,6 +5,7 @@ import { EmailVerificationService } from './email-verification.service';
 import { EmailVerification } from '@database/entities/email-verification.entity';
 import { User } from '@database/entities/user.entity';
 import { MailService } from '@modules/mail/mail.service';
+import { MailTemplate } from '@common/constants/mail.constants';
 import { AuditService } from '@modules/audit/audit.service';
 import { AuditEvent, UserStatus } from '@common/constants/constants';
 
@@ -122,6 +123,12 @@ describe('EmailVerificationService', () => {
         expect.objectContaining({
           userId: 'user-1',
           event: AuditEvent.EMAIL_VERIFIED,
+        }),
+      );
+      expect(mailService.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'john@example.com',
+          template: MailTemplate.WELCOME,
         }),
       );
     });

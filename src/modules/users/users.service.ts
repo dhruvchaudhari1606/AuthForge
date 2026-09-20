@@ -17,7 +17,6 @@ import {
   PaginationResult,
 } from '@common/utils/pagination.util';
 import { MailService } from '@modules/mail/mail.service';
-import { MailTemplate } from '@common/constants/mail.constants';
 import { RegisterDto } from '@modules/auth/dto/register.dto';
 import { UserStatus } from '@common/constants/constants';
 
@@ -81,19 +80,11 @@ export class UsersService {
       email: data.email.trim().toLowerCase(),
       password: hashedPassword,
       roles: [role],
-      status: UserStatus.ACTIVE,
+      status: UserStatus.PENDING_VERIFICATION,
       language: data.language,
     });
 
     const userDetails = await this.userRepository.save(user);
-
-    await this.mailService.send({
-      to: data.email,
-      subjectKey: 'mail.welcome_subject',
-      template: MailTemplate.WELCOME,
-      context: { name: data.name },
-      language: data.language,
-    });
 
     return userDetails;
   }

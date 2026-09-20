@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import { Seeder, SeederFactoryManager } from 'typeorm-extension';
+import { DEFAULT_SYSTEM_PERMISSIONS } from '@common/constants/permissions.constant';
 import { Permission } from '../entities/permission.entity';
 import { Role } from '../entities/role.entity';
 
@@ -15,17 +16,7 @@ export default class PermissionSeeder implements Seeder {
     const permissionRepository = dataSource.getRepository(Permission);
     const roleRepository = dataSource.getRepository(Role);
 
-    const defaultPermissions = [
-      { name: 'users.read', description: 'Read user information' },
-      { name: 'users.update', description: 'Update user information' },
-      { name: 'sessions.read', description: 'Read user sessions' },
-      { name: 'sessions.revoke', description: 'Revoke active sessions' },
-      { name: 'roles.read', description: 'Read roles' },
-      { name: 'roles.manage', description: 'Create, update, or delete roles' },
-      { name: 'permissions.read', description: 'Read system permissions' },
-      { name: 'permissions.manage', description: 'Manage permissions' },
-      { name: 'audit.read', description: 'View security audit logs' },
-    ];
+    const defaultPermissions = DEFAULT_SYSTEM_PERMISSIONS;
 
     const savedPermissions: Permission[] = [];
 
